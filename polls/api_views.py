@@ -1,8 +1,6 @@
 from datetime import datetime
 
 from rest_framework import viewsets, permissions, generics
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from .serializers import PollSerializer, QuestionSerializer, \
     ChoiceSerializer, ActivePollSerializer, AnswerSerializer,\
     PollDoneSerializer

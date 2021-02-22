@@ -15,11 +15,10 @@ class QuestionField(serializers.RelatedField):
 
 
 class PollSerializer(serializers.ModelSerializer):
-    questions = QuestionField(many=True, read_only=True)
 
     class Meta:
         model = Poll
-        fields = ['id', 'name', 'description', 'date_start', 'date_finish', 'questions']
+        fields = ['id', 'name', 'description', 'date_start', 'date_finish']
 
     def validate(self, data):
         if data.get('date_start') < datetime.now().date():
@@ -83,10 +82,15 @@ class AnswerSerializer(serializers.ModelSerializer):
         fields = ['id', 'question', 'answer']
 
     def validate(self, data):
+        user = None
+        request = self.context.get("request")
+        if request and hasattr(request, "user"):
+            user = request.user
+        data['user_id'] = user.id
         question = data.get('question')
         text = data.get('answer')
         if question.question_type == 'text':
-            pass
+            return data
         else:
             try:
                 question_choices = [
@@ -104,6 +108,11 @@ class AnswerSerializer(serializers.ModelSerializer):
             except serializers.ValidationError as err:
                 raise err
         return data
+
+    def create(self, validated_data):
+        question = validated_data.pop('question')
+        answer = Answer.objects.create(question=question, **validated_data)
+        return answer
 
 
 class AnswerField(serializers.RelatedField):

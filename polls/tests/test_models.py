@@ -2,7 +2,7 @@ from datetime import datetime
 
 from django.test import TestCase
 from django.core.exceptions import ValidationError
-from .models import Poll, Question
+from polls.models import Poll, Question
 
 
 class PollTest(TestCase):
