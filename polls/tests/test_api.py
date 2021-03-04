@@ -104,3 +104,22 @@ class AccountTests(APITestCase):
         self.assertEqual(Answer.objects.count(), 1)
         self.assertEqual(Answer.objects.get().answer, 'Answer')
         self.assertEqual(Answer.objects.get().user_id, self.user.id)
+
+    def test_create_answer_with_not_active_poll(self):
+        url = reverse('answers-create')
+        poll = Poll.objects.get()
+        # Change date_finish to yesterday date
+        poll.date_finish = poll.date_finish.replace(day=poll.date_finish.day-1)
+        poll.save()
+        Question.objects.create(
+            poll=poll, text='Test question', question_type='text'
+        )
+        data = {
+            "poll": poll.id,
+            'answers': [
+                {"question": 1, "answer": "Answer"}
+            ]
+        }
+        self.client.login(username='user', password='123')
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
