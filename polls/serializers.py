@@ -163,6 +163,13 @@ class PollAnswerSerializer(serializers.ModelSerializer):
         model = PollAnswer
         fields = ['poll', 'answers']
 
+    def validate_poll(self, value):
+        if value.date_finish < datetime.now().date():
+            raise serializers.ValidationError(
+                {'Poll': "Poll must be active."}
+            )
+        return value
+
     def validate(self, data):
         user = None
         request = self.context.get("request")
