@@ -59,14 +59,26 @@ class Choice(models.Model):
 
 class Answer(models.Model):
     user_id = models.IntegerField()
+    poll_answer = models.ForeignKey(
+        'PollAnswer', on_delete=models.CASCADE,
+        related_name='answers'
+    )
     question = models.ForeignKey(
         'Question', on_delete=models.CASCADE,
-        related_name='answers'
+        related_name='question_answers'
     )
     answer = models.TextField()
 
     def __str__(self):
         return self.answer
+
+
+class PollAnswer(models.Model):
+    poll = models.ForeignKey(
+        'Poll', on_delete=models.CASCADE,
+        related_name='poll_answers'
+    )
+    user_id = models.IntegerField()
 
 
 @receiver(pre_save, sender=Poll)
