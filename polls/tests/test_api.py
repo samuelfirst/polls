@@ -93,8 +93,10 @@ class AccountTests(APITestCase):
             poll=poll, text='Test question', question_type='text'
         )
         data = {
-            "question": 1,
-            "answer": "Answer"
+            "poll": poll.id,
+            'answers': [
+                {"question": 1, "answer": "Answer"}
+            ]
         }
         self.client.login(username='user', password='123')
         response = self.client.post(url, data, format='json')
