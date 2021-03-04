@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from rest_framework import serializers
-from .models import Poll, Question, Choice, Answer
+from .models import Poll, Question, Choice, Answer, PollAnswer
 
 
 class QuestionField(serializers.RelatedField):
@@ -99,11 +99,11 @@ class AnswerSerializer(serializers.ModelSerializer):
                 choices = text.split(';')
                 if not set(question_choices) & set(choices):
                     raise serializers.ValidationError(
-                        {'choices': "Answer must contain choice."}
+                        {f'question {question.id}, choices': "Answer must contain choice."}
                     )
                 if question.question_type == 'choice' and len(choices) > 1:
                     raise serializers.ValidationError(
-                        {'choices': "Answer must contain only one choice."}
+                        {f'question {question.id}, choices': "Answer must contain only one choice."}
                     )
             except serializers.ValidationError as err:
                 raise err
@@ -128,17 +128,58 @@ class AnswerField(serializers.RelatedField):
             return ''
 
 
-class QuestionDoneSerializer(serializers.ModelSerializer):
-    answers = AnswerField(many=True, read_only=True)
+class AnswerDoneSerializer(serializers.ModelSerializer):
+    question = QuestionField(read_only=True)
 
     class Meta:
-        model = Question
-        fields = ['text', 'answers']
+        model = Answer
+        fields = ['question', 'answer']
+
+
+class PollField(serializers.RelatedField):
+    def to_representation(self, value):
+        poll_data = {
+            'id': value.id,
+            'name': value.name,
+            'description': value.description,
+            'date_finish': value.date_finish
+        }
+        return poll_data
 
 
 class PollDoneSerializer(serializers.ModelSerializer):
-    questions = QuestionDoneSerializer(many=True)
+    poll = PollField(read_only=True)
+    answers = AnswerDoneSerializer(many=True, read_only=True)
 
     class Meta:
-        model = Poll
-        fields = ['id', 'name', 'description', 'date_start', 'date_finish', 'questions']
+        model = PollAnswer
+        fields = ['poll', 'answers']
+
+
+class PollAnswerSerializer(serializers.ModelSerializer):
+    answers = AnswerSerializer(many=True)
+
+    class Meta:
+        model = PollAnswer
+        fields = ['poll', 'answers']
+
+    def validate(self, data):
+        user = None
+        request = self.context.get("request")
+        if request and hasattr(request, "user"):
+            user = request.user
+        data['user_id'] = user.id
+        questions = [question.id for question in Question.objects.filter(poll=data['poll'])]
+        data_questions = [answer['question'].id for answer in data['answers']]
+        if questions != data_questions:
+            raise serializers.ValidationError(
+                {'answers': "Poll must contain answers for all questions."}
+            )
+        return data
+
+    def create(self, validated_data):
+        answers = validated_data.pop('answers')
+        poll_answer = PollAnswer.objects.create(**validated_data)
+        for answer in answers:
+            Answer.objects.create(poll_answer=poll_answer, **answer)
+        return poll_answer
